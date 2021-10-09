@@ -105,54 +105,6 @@ let rec merge_rev cmp acc l1 l2 =
      if cmp x y > 0 then merge_rev cmp (x::acc) l1' l2
      else merge_rev cmp (y::acc) l1 l2'
 
-(** the two mutually recursive sort functions, one returning a sorted
-    list the second a reverse sorted list. The first argument is a
-    reference to the unused blocks *)
-let rec sort cur cmp n =
-  match n with
-  | 1 -> (* 1 block, we transform it into a list *)
-     begin
-       match !cur with
-       | Ord{size;list;next} ->
-          cur := next;
-          (* This case is a bit of a waste ... *)
-          heads size list;
-       | Rev{size;list;next} ->
-          cur := next;
-          rev_heads size list
-       | Fin ->
-          assert false
-     end
-  | _ -> (** standard merge *)
-     let n1 = n lsr 1 in
-     let n2 = n - n1 in
-     (** end of the list first as cur point to the end first *)
-     let l2 = rev_sort cur cmp n2 in
-     let l1 = rev_sort cur cmp n1 in
-     merge_rev cmp [] l1 l2
-
-and rev_sort cur cmp n =
-  match n with
-  | 1 -> (** 1 block, we transform it into a list *)
-     begin
-       match !cur with
-       | Ord{size;list;next} ->
-          cur := next;
-          rev_heads size list;
-       | Rev{size;list;next} ->
-          cur := next;
-          (** This case is a bit of a waste ... *)
-          heads size list
-       | Fin ->
-          assert false
-     end
-  | _ -> (** standard merge *)
-     let n1 = n lsr 1 in
-     let n2 = n - n1 in
-     (** end of the list first as cur point to the end first *)
-     let l2 = sort cur cmp n2 in
-     let l1 = sort cur cmp n1 in
-     rev_merge cmp [] l1 l2
 
 (** Final sorting algorithm *)
 let sort : type a. (a -> a -> int) -> a list -> a list = fun cmp l0 ->
@@ -161,4 +113,43 @@ let sort : type a. (a -> a -> int) -> a list -> a list = fun cmp l0 ->
   match blocks with
   | Ord{list;next=Fin} -> list
   | Rev{list;next=Fin} -> List.rev list
-  | _ -> sort (ref blocks) cmp len
+  | _ ->
+     let cur = ref blocks in
+(** the two mutually recursive sort functions, one returning a sorted
+    list the second a reverse sorted list. The first argument is a
+    reference to the unused blocks *)
+     let rec sort n =
+       match (n, !cur) with
+       | (1, Ord{size;list;next}) ->
+          cur := next;
+          (* This case is a bit of a waste ... *)
+          heads size list;
+       | (1, Rev{size;list;next}) ->
+          cur := next;
+          rev_heads size list
+       | _ -> (** standard merge *)
+          let n1 = n lsr 1 in
+          let n2 = n - n1 in
+          (** end of the list first as cur point to the end first *)
+          let l2 = rev_sort n2 in
+          let l1 = rev_sort n1 in
+          merge_rev cmp [] l1 l2
+
+     and rev_sort n =
+       match (n, !cur) with
+       | (1, Ord{size;list;next}) ->
+          cur := next;
+          rev_heads size list;
+       | (1, Rev{size;list;next}) ->
+          cur := next;
+          (** This case is a bit of a waste ... *)
+          heads size list
+       | _ -> (** standard merge *)
+          let n1 = n lsr 1 in
+          let n2 = n - n1 in
+          (** end of the list first as cur point to the end first *)
+          let l2 = sort n2 in
+          let l1 = sort n1 in
+          rev_merge cmp [] l1 l2
+     in
+     sort len
