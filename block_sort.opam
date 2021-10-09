@@ -1,0 +1,26 @@
+synopsis: "A stable sort which is fast on partially sorted lists"
+description:
+"""
+Block_sort is a small module providing a O(n ln(k)), where
+    - n is the list size
+    - k is the number of changes of direction
+
+Tests are provided, this algorithm is between 0.9 to 10 times
+faster thant OCaml (meaning a bit slower to much faster)
+"""
+
+opam-version: "1.0"
+maintainer: "Christophe Raffalli <christophe@raffalli.eu>"
+bug-reports: "https://github.com/craff/block-sort/issues"
+authors: [
+  "Christophe Raffalli <christophe@raffalli.eu>" ]
+license: "LGPL-3.0"
+dev-repo: "git+https://github.com/craff/block-sort.git"
+
+depends: [
+  "ocaml" { >= "4.02.0" }
+  "dune"  { >= "2.7.0" }
+]
+
+build: [ [ "dune" "build" "-p" name "-j" jobs ] ]
+run-test: [ [ "dune" "runtest" "-p" name "-j" jobs ] ]

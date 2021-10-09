@@ -1,0 +1,18 @@
+Correctness test passed
+Stability test passed
+Random lists:
+          random: passed
+    random small: passed
+Worst cases:
+          worst1: passed
+          worst2: passed
+Sorted (partially) lists:
+          sorted: passed
+        reversed: passed
+      sorted@rev: passed
+      rev@sorted: passed
+Shuffled lists (permute k times 2 elements in a sorted list):
+      shuffle 10: passed
+     shuffle 100: passed
+    shuffle 1000: passed
+   shuffle 10000: passed

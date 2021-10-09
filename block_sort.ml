@@ -1,11 +1,9 @@
-(** Implementation of a sorting algorithm for lists
-    in O(n ln(k)), where
+(** Implementation of a sorting algorithm for lists in O(n ln(k)), where
     - n is the list size
     - k is the number of changes of direction *)
 
-(** The first phase of the algorithm is
-    to split the list in block which are either
-    in order of in reverse order.
+(** The first phase of the algorithm is to split the list in blocks
+    which are either in order of in reverse order.
 
     The block have a size and a pointer to the original list.
  *)
@@ -21,9 +19,9 @@ type 'a blocks =
            }
   | Fin
 
-(** [split cmp x l l0] the list [x::l as l0] with [cmp] as comparison.
-    Beware, the block are returned with first the first block being
-    the last in the list.
+(** [split cmp x l l0] split the list [x::l as l0] with [cmp] as comparison.
+    Beware, the blocks are returned with the first block being the last in
+    the list.
  *)
 let split cmp x l l0 =
   (** Start of a new block *)
@@ -48,6 +46,7 @@ let split cmp x l l0 =
        else
          split_rev len next (size+1) y l' l0
 
+  (** We are building a sorted block *)
   and split_sam len next size x l l0 =
     match l with
     | [] -> (len, Ord { size; list=l0; next })
@@ -61,9 +60,9 @@ let split cmp x l l0 =
   in
   split_ini 1 Fin x l l0
 
-(* The two next functions are used to convert block cells in list *)
+(** The two next functions are used to convert blocks in lists *)
 
-(** [rev_heads n l] gives the reversal of the n firsts elements of l.*)
+(** [rev_heads n l] gives the reversal of the n first elements of l.*)
 let rev_heads n l =
   let rec gn acc n l =
     match n,l with
@@ -73,7 +72,7 @@ let rev_heads n l =
   in
   gn [] n l
 
-(** [heads n l] gives the n firsts elements of l *)
+(** [heads n l] gives the n first elements of l *)
 let rec heads n l =
   let rec fn n l =
     match n,l with
@@ -86,7 +85,8 @@ let rec heads n l =
   else
     fn n l
 
-(** Now a merge sort with a spacial treatment of the leafs *)
+(** Now a merge sort with a special treatment of the leafs, inspired by
+    List.sort in ocaml stdlib. *)
 
 (** reversal of the merge of l1 l2 which are sorted,
     the result is reverse sorted*)
@@ -107,7 +107,7 @@ let rec merge_rev cmp acc l1 l2 =
 
 (** the two mutually recursive sort functions, one returning a sorted
     list the second a reverse sorted list. The first argument is a
-    reference to the blocks *)
+    reference to the unused blocks *)
 let rec sort cur cmp n =
   match n with
   | 1 -> (* 1 block, we transform it into a list *)
@@ -123,7 +123,7 @@ let rec sort cur cmp n =
        | Fin ->
           assert false
      end
-  | _ -> (* standard merge *)
+  | _ -> (** standard merge *)
      let n1 = n lsr 1 in
      let n2 = n - n1 in
      (** end of the list first as cur point to the end first *)
@@ -133,7 +133,7 @@ let rec sort cur cmp n =
 
 and rev_sort cur cmp n =
   match n with
-  | 1 -> (* 1 block, we transform it into a list *)
+  | 1 -> (** 1 block, we transform it into a list *)
      begin
        match !cur with
        | Ord{size;list;next} ->
@@ -141,12 +141,12 @@ and rev_sort cur cmp n =
           rev_heads size list;
        | Rev{size;list;next} ->
           cur := next;
-          (* This case is a bit of a waste ... *)
+          (** This case is a bit of a waste ... *)
           heads size list
        | Fin ->
           assert false
      end
-  | _ ->
+  | _ -> (** standard merge *)
      let n1 = n lsr 1 in
      let n2 = n - n1 in
      (** end of the list first as cur point to the end first *)
@@ -162,141 +162,3 @@ let sort : type a. (a -> a -> int) -> a list -> a list = fun cmp l0 ->
   | Ord{list;next=Fin} -> list
   | Rev{list;next=Fin} -> List.rev list
   | _ -> sort (ref blocks) cmp len
-
-(* TESTS *)
-
-(* Printing *)
-let print_list f ch =
-  Printf.fprintf ch "[%a]" (fun ch l ->
-                   List.iteri (fun i x ->
-                       Printf.fprintf ch "%s%a" (if i > 0 then ";" else "") f x) l)
-
-let print_il = print_list (fun ch -> Printf.fprintf ch "%d")
-let print_ill = print_list (fun ch -> Printf.fprintf ch "%a" print_il)
-
-(* Timing *)
-let chrono f x =
-  Gc.compact ();
-  let t1 = Sys.time () in
-  let r = f x in
-  let t2 = Sys.time () in
-  (t2 -. t1, r)
-
-let chronos msg f g x =
-  let tf, lf = chrono f x in
-  let tg, lg = chrono g x in
-  assert(lf = lg);
-  let g = 100. *. (tf -. tg) /. tf in
-  let f = tf /. tg in
-  Printf.printf "%16s: tf = %.2f, tg = %.2f, factor = %.2fx, gain = %.2f%%\n%!" msg tf tg f g
-
-(* TEST CORRECTNESS *)
-
-let alea n p =
-  let rec fn acc n =
-    if n <= 0 then acc else fn (Random.int p :: acc) (n - 1)
-  in fn [] n
-
-let _ =
-  for i = 0 to 1000 do
-    let l = alea i 10_000 in
-    assert (sort compare l = List.sort compare l)
-  done
-
-let _ = Printf.printf "Correctness test passed\n%!"
-
-(* TEST STABILITY *)
-
-let alea2 n p =
-  let rec fn acc n =
-    if n <= 0 then acc else fn ((Random.int p, Random.int p) :: acc) (n - 1)
-  in fn [] n
-
-let _ =
-  for i = 0 to 1000 do
-    let l = alea2 i 100 in
-    let cmp (x,_) (y,_) = compare x y in
-    assert (sort cmp l = List.sort cmp l)
-  done
-
-let _ = Printf.printf "Stability test passed\n%!"
-
-(** Random lists *)
-
-let _ = Printf.printf "Random lists:\n%!"
-
-let l0 = alea 2_000_000 100_000_000
-let _ = chronos "random" (List.stable_sort compare) (sort compare) l0
-
-let l0 = alea 2_000_000 5
-let _ = chronos "random small" (List.stable_sort compare) (sort compare) l0
-
-(** TWO WORST CASES *)
-let _ = Printf.printf "Worst cases:\n%!"
-
-let worst1 n =
-  let rec fn acc n =
-    if n <= 0 then acc else
-    fn (n-3::n::acc) (n-2)
-  in fn [] n
-
-let worst2 n =
-  let rec fn acc n =
-    if n <= 0 then acc else
-    fn (n-4::n+1::n::acc) (n-3)
-  in fn [] n
-
-let l0 = worst1 2_000_000
-let _ = chronos "worst1" (List.stable_sort compare) (sort compare) l0
-
-let l0 = worst2 2_000_000
-let _ = chronos "worst2" (List.stable_sort compare) (sort compare) l0
-
-(** SORTED LISTS *)
-let _ = Printf.printf "Sorted (partially) lists:\n%!"
-
-let sorted n a b =
-  let rec fn acc n =
-    if n <= 0 then acc else fn (a*n+b :: acc) (n - 1)
-  in fn [] n
-
-(** Almost sorted *)
-let l0 = sorted 2_000_000 1 0
-let _ = chronos "sorted" (List.stable_sort compare) (sort compare) l0
-
-let l0 = sorted 2_000_000 (-1) 0
-let _ = chronos "reversed" (List.stable_sort compare) (sort compare) l0
-
-let l0 = sorted 1_000_000 1 0 @ sorted 1_000_000 (-1) 0
-let _ = chronos "sorted@rev" (List.stable_sort compare) (sort compare) l0
-
-let l0 = sorted 1_000_000 (-1) 0 @ sorted 1_000_000 1 0
-let _ = chronos "rev@sorted" (List.stable_sort compare) (sort compare) l0
-
-(** Shuffled lists (permute k times 2 elements in a sorted list) *)
-let _ = Printf.printf
-          "Shuffled lists (permute k times 2 elements in a sorted list):\n%!"
-
-let shuffle n k =
-  let array = Array.init n (fun i -> i) in
-  for i = 1 to k; do
-    let a = Random.int n and b = Random.int n in
-    let tmp = array.(a) in
-    array.(a) <- array.(b);
-    array.(b) <- tmp
-  done;
-  Array.to_list array
-
-let l0 = shuffle 2_000_000 10
-let _ = chronos "shuffle 10" (List.stable_sort compare) (sort compare) l0
-
-let l0 = shuffle 2_000_000 100
-let _ = chronos "shuffle 100" (List.stable_sort compare) (sort compare) l0
-
-let l0 = shuffle 2_000_000 1_000
-let _ = chronos "shuffle 1000" (List.stable_sort compare) (sort compare) l0
-
-let l0 = shuffle 2_000_000 10_000
-let _ = chronos "shuffle 10000" (List.stable_sort compare) (sort compare) l0
-
-let l0 = []

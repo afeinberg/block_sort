@@ -1,0 +1,22 @@
+; Add project-wide flags here.
+(env
+  (dev     (flags :standard -w -27-9-35-50-32-39))
+  (release (flags :standard -w -27-9-35-50-32-39)))
+
+(library
+ (name block_sort)
+ (public_name block_sort)
+ (modules block_sort)
+ (synopsis "A stable sort which is fast on partially sorted lists"))
+
+(executable
+ (name tests)
+ (modules tests)
+ (libraries block_sort))
+
+(rule
+ (with-stdout-to tests.output (run ./tests.exe --quiet)))
+
+(rule
+ (alias runtest)
+ (action (diff tests.expected tests.output)))
